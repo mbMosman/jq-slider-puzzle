@@ -1,142 +1,141 @@
-(function () {
-    
-$("td").click(tileClick);
-
-console.log(checkForWin());
-    
-
-function isEmptySquare($image) {
-    var altText = $image.attr("alt");
-    if (altText === "empty") {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
+$(document).ready( function () {
+    $('td').on('click', tileClick);
+});
     
 function tileClick() {
-    var $td, $clickedImg, $emptyImg, temp;
+    // $ at the start of name indicates it is a jQuery object
+    const $tdClicked = $(this);
     
-    $td = $(this)
+    // See if we clicked on the empty spot to give message
+    if ( isEmptyCell($tdClicked) ) {
+        alert('Click on an image next to this square to move it.');
+    } else {
     
-    // See if we clicked on the empty spot to give message.
-    $clickedImg = $td.children().first();
-    if ( isEmptySquare($clickedImg) ) {
-        alert("Click on an image next to this square to move it.");
-    }
-    else {
-    
-        // Look for an empty square
-        $emptyImg = checkForEmpty($td);
-        console.log($emptyImg);
+        // Check for an empty neighbor square
+        $emptyCell = findEmptyNeighbor($tdClicked);
+        //console.log($emptyCell);
         
-        if ($emptyImg === null) {
-            alert("Click on an image next to the empty square to move it.");
+        if ($emptyCell == null) {
+            // Can't do swap if no empty square
+            alert('Click on an image next to the empty square to move it.');
         } 
         else {
-            //Swap images
-            temp = $clickedImg.attr("src");
-            $clickedImg.attr("src", $emptyImg.attr("src"));
-            $emptyImg.attr("src", temp);
-
-            temp = $clickedImg.attr("alt");
-            $clickedImg.attr("alt", $emptyImg.attr("alt"));
-            $emptyImg.attr("alt", temp);
-            
-            // Check for win
+            // Swap images and check for win
+            swapImages($tdClicked, $emptyCell)
             if ( checkForWin() ) {
-                $("#puzzleGrid").addClass("win");   
+                $('#puzzleGrid').addClass('win');   
             }
         }
     }
 }
+
+function getImageFromCell($td) {
+    return $td.children('img');
+}
+
+function isEmptyCell($td) {
+    const $image = getImageFromCell($td);
+    if ($image.attr('alt') === 'empty') {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function swapImages($td1, $td2) {
+    $td1Img = getImageFromCell($td1);
+    $td1Img.detach();
+
+    $td2Img = getImageFromCell($td2);
+    $td2Img.detach();
+
+    $td1.append($td2Img);
+    $td2.append($td1Img);
+}
     
-function checkForEmpty($td) {
-    var newRow, newCol, idToCheck, $img;
+function findEmptyNeighbor($td) {
     
-    var id = $td.attr("id");
-    var row = id.substring(4,5);
-    var col = id.substring(5,6);
+    const clickedId = $td.attr('id');
+    const clickedRow = clickedId.substring(4, 5);
+    const clickedColumn = clickedId.substring(5, 6);
     
-    console.log("Row " + row);
-    console.log("Col " + col); 
+    console.log(`Clicked row ${clickedRow} column ${clickedColumn}`);
     
-    // Check top
-    if (row > 1) {
-        newRow = parseInt(row) - 1;
-        newCol = col;
+    // Check above
+    if (clickedRow > 1) {
+        const rowToCheck = parseInt(clickedRow) - 1;
+        const colToCheck = clickedColumn;
         
-        $img = getImageFromCell(newRow, newCol);
-        if (isEmptySquare($img)) {
-            return $img;
+        const $tdAbove = getCell(rowToCheck, colToCheck);
+        if (isEmptyCell($tdAbove)) {
+            return $tdAbove; // Found it!  Return it to stop checking.
         }
     }
-    // Check bottom
-    if (row < 4) {
-        newRow = parseInt(row) + 1;
-        newCol = col;
-        $img = getImageFromCell(newRow, newCol);
-        if (isEmptySquare($img)) {
-            return $img;
+    // Check below
+    if (clickedRow < 4) {
+        const rowToCheck = parseInt(clickedRow) + 1;
+        const colToCheck = clickedColumn;
+        
+        const $tdBelow = getCell(rowToCheck, colToCheck);
+        if (isEmptyCell($tdBelow)) {
+            return $tdBelow; // Found it!  Return it to stop checking.
         }
     }
     
     // Check left
-    if (col > 1) {
-        newRow = row;
-        newCol = parseInt(col) - 1;
-        $img = getImageFromCell(newRow, newCol);
-        if (isEmptySquare($img)) {
-            return $img;
+    if (clickedColumn > 1) {
+        const rowToCheck = clickedRow;
+        const colToCheck = parseInt(clickedColumn) - 1;
+        
+        const $tdLeft = getCell(rowToCheck, colToCheck);
+        if (isEmptyCell($tdLeft)) {
+            return $tdLeft; // Found it!  Return it to stop checking.
         }
     }
     
     // Check right
-    if (col < 4) {
-        newRow = row;
-        newCol = parseInt(col) + 1;
-        $img = getImageFromCell(newRow, newCol);
-        if (isEmptySquare($img)) {
-            return $img;
+    if (clickedColumn < 4) {
+        const rowToCheck = clickedRow;
+        const colToCheck = parseInt(clickedColumn) + 1;
+        
+        const $tdRight = getCell(rowToCheck, colToCheck);
+        if (isEmptyCell($tdRight)) {
+            return $tdRight; // Found it!  Return it.
         }
     }
     
+    // There may not be an empty neighbor cell
     return null;
-        
 }
 
-function getImageFromCell(row, col) {
-    idToCheck = "#cell" + row + col;
-    console.log("Id below: " + idToCheck);        
-    return $(idToCheck).children().first();
+function getCell(row, col) {
+    idToCheck = '#cell' + row + col;        
+    return $(idToCheck);
 }
     
 function checkForWin() {
-    var counter, $allImages, isWin;
     
-    isWin = true;
-    counter = 1;
-    $allImages = $("img").each( function(index, element) {
-        var altText = $(this).attr("alt");
+    let counter = 1; // For image numbers, from 1 - 16
+
+    $allImages = $('img');
+    for (let i=0; i<$allImages.size(); i++) {
+        const $image = $allImages.get(i);
+        const altText = $image.alt;
         if (counter === 16) {
-            //should be empty
-            if (altText != "empty") {
-                isWin = false;
+            // last one should be empty
+            if (altText != 'empty') {
                 return false;
             }
         } 
         else {
             if (altText != counter) {
-                isWin = false;
                 return false;
             }
         }
         counter = counter + 1;
-    });
+    }
     
-    return isWin;
+    // Didn't find anything out of order, so winner!!!
+    return true;
     
 }
-    
-}());
